@@ -30,6 +30,8 @@ public class Player : NetworkBehaviour
 
     public Vector2 Position => m_Position.Value;
 
+    public Vector2 PredPosition = new();
+
     private Queue<Vector2> m_InputQueue = new Queue<Vector2>();
 
     private void Awake()
@@ -107,6 +109,8 @@ public class Player : NetworkBehaviour
         {
             inputDirection += Vector2.right;
         }
+        PredPosition += inputDirection.normalized * m_Velocity * Time.deltaTime;
+        
         SendInputServerRpc(inputDirection.normalized);
     }
 

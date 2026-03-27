@@ -21,6 +21,9 @@ public class PlayerGhost : NetworkBehaviour
 
     private void Update()
     {
-        transform.position = m_Player.Position;
+        if (IsOwner)
+            transform.position = m_Player.PredPosition;
+        else
+            transform.position = m_Player.Position;
     }
 }
