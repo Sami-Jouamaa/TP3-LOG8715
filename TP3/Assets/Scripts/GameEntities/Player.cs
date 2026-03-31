@@ -13,6 +13,7 @@ public class Player : NetworkBehaviour
 
     private GameState m_GameState;
 
+    public NetworkVariable<bool> corrected = new NetworkVariable<bool>();
     // GameState peut etre nul si l'entite joueur est instanciee avant de charger MainScene
     private GameState GameState
     {
@@ -67,26 +68,30 @@ public class Player : NetworkBehaviour
         {
             var input = m_InputQueue.Dequeue();
             m_Position.Value += input * m_Velocity * Time.deltaTime;
-
             // Gestion des collisions avec l'exterieur de la zone de simulation
             var size = GameState.GameSize;
+            corrected.Value = false;
             if (m_Position.Value.x - m_Size < -size.x)
             {
                 m_Position.Value = new Vector2(-size.x + m_Size, m_Position.Value.y);
+                corrected.Value = true;
             }
             else if (m_Position.Value.x + m_Size > size.x)
             {
                 m_Position.Value = new Vector2(size.x - m_Size, m_Position.Value.y);
+                corrected.Value = true;
             }
-
             if (m_Position.Value.y + m_Size > size.y)
             {
                 m_Position.Value = new Vector2(m_Position.Value.x, size.y - m_Size);
+                corrected.Value = true;
             }
             else if (m_Position.Value.y - m_Size < -size.y)
             {
                 m_Position.Value = new Vector2(m_Position.Value.x, -size.y + m_Size);
+                corrected.Value = true;
             }
+
         }
     }
 
