@@ -46,7 +46,7 @@ public class MovingCircle : NetworkBehaviour
         if (IsServer)
         {
             // Mise a jour de la position du cercle selon sa vitesse
-            m_Position.Value += m_Velocity.Value * Time.deltaTime;
+            m_Position.Value += m_Velocity.Value * Time.fixedDeltaTime;
 
             // Gestion des collisions avec l'exterieur de la zone de simulation
             var size = m_GameState.GameSize;
