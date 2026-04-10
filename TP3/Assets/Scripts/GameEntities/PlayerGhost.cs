@@ -23,10 +23,11 @@ public class PlayerGhost : NetworkBehaviour
     {
         if (IsOwner)
         {
-            if (m_Player.corrected.Value)
+            if (m_Player.corrected.Value && !m_Player.inSync.Value)
             {
                 Debug.Log("corrected");
                 m_Player.PredPosition = m_Player.Position;
+                SendinSyncServerRpc();
             }
             transform.position = m_Player.PredPosition;
         }
@@ -34,5 +35,11 @@ public class PlayerGhost : NetworkBehaviour
             Debug.Log("not owner");
             transform.position = m_Player.Position;
         }
+    }
+        [ServerRpc]
+    private void SendinSyncServerRpc()
+    {
+        // On utilise une file pour les inputs pour les cas ou on en recoit plusieurs en meme temps.
+        m_Player.inSync.Value = true;
     }
 }

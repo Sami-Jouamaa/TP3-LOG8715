@@ -15,6 +15,9 @@ public class Player : NetworkBehaviour
 
     public NetworkVariable<bool> corrected = new NetworkVariable<bool>();
     // GameState peut etre nul si l'entite joueur est instanciee avant de charger MainScene
+    public NetworkVariable<bool> inSync = new NetworkVariable<bool>(true);
+    // GameState peut etre nul si l'entite joueur est instanciee avant de charger MainScene
+
     private GameState GameState
     {
         get
@@ -63,6 +66,11 @@ public class Player : NetworkBehaviour
 
     private void UpdatePositionServer()
     {
+        if (!inSync.Value)
+        {
+            m_InputQueue.Clear();
+            return;
+        }
         // Mise a jour de la position selon dernier input reçu, puis consommation de l'input
         if (m_InputQueue.Count > 0)
         {
@@ -91,8 +99,12 @@ public class Player : NetworkBehaviour
                 m_Position.Value = new Vector2(m_Position.Value.x, -size.y + m_Size);
                 corrected.Value = true;
             }
-
         }
+        if (corrected.Value)
+        {
+            inSync.Value = false;
+        }
+
     }
 
     private void UpdateInputClient()
@@ -126,6 +138,7 @@ public class Player : NetworkBehaviour
         // On utilise une file pour les inputs pour les cas ou on en recoit plusieurs en meme temps.
         m_InputQueue.Enqueue(input);
     }
+
 
 
 
