@@ -5,6 +5,16 @@ using UnityEngine;
 
 public class Player : NetworkBehaviour
 {
+    struct PlayerInput
+    {
+        public int tick;
+        public Vector2 direction;
+    }
+
+    private Queue<PlayerInput> m_InputQueue = new Queue<PlayerInput>();
+    private List<PlayerInput> m_InputBuffer = new List<PlayerInput>();
+    private int m_CurrentTick = 0;
+
     [SerializeField]
     private float m_Velocity;
 
@@ -36,8 +46,6 @@ public class Player : NetworkBehaviour
 
     public Vector2 PredPosition = new();
 
-    private Queue<Vector2> m_InputQueue = new Queue<Vector2>();
-
     private void Awake()
     {
         m_GameState = FindFirstObjectByType<GameState>();
@@ -61,8 +69,11 @@ public class Player : NetworkBehaviour
         if (IsClient && IsOwner)
         {
             UpdateInputClient();
+            Reconcile();
         }
     }
+
+    private NetworkVariable<int> LastProcessedTick = new NetworkVariable<int>();
 
     private void UpdatePositionServer()
     {
@@ -75,7 +86,8 @@ public class Player : NetworkBehaviour
         if (m_InputQueue.Count > 0)
         {
             var input = m_InputQueue.Dequeue();
-            m_Position.Value += input * m_Velocity * Time.deltaTime;
+            LastProcessedTick.Value = input.tick;
+            m_Position.Value += input.direction * m_Velocity * Time.deltaTime;
             // Gestion des collisions avec l'exterieur de la zone de simulation
             var size = GameState.GameSize;
             corrected.Value = false;
@@ -107,6 +119,23 @@ public class Player : NetworkBehaviour
 
     }
 
+    private void Reconcile()
+    {
+        if (!IsOwner) return;
+
+        int serverTick = LastProcessedTick.Value;
+        Vector2 serverPos = m_Position.Value;
+
+        PredPosition = serverPos;
+
+        m_InputBuffer.RemoveAll(i => i.tick <= serverTick);
+
+        foreach (var input in m_InputBuffer)
+        {
+            PredPosition += input.direction * m_Velocity * Time.fixedDeltaTime;
+        }
+    }
+
     private void UpdateInputClient()
     {
         Vector2 inputDirection = new Vector2(0, 0);
@@ -126,17 +155,36 @@ public class Player : NetworkBehaviour
         {
             inputDirection += Vector2.right;
         }
-        PredPosition += inputDirection.normalized * m_Velocity * Time.deltaTime;
-        
-        SendInputServerRpc(inputDirection.normalized);
+
+        inputDirection = inputDirection.normalized;
+
+        m_CurrentTick++;
+
+        PlayerInput input = new PlayerInput
+        {
+            tick = m_CurrentTick,
+            direction = inputDirection
+        };
+
+        PredPosition += input.direction * m_Velocity * Time.fixedDeltaTime;
+        m_InputBuffer.Add(input);
+        SendInputServerRpc(input.tick, input.direction);
+
+        // PredPosition += inputDirection.normalized * m_Velocity * Time.deltaTime;
+
+        // SendInputServerRpc(inputDirection.normalized);
     }
 
 
     [ServerRpc]
-    private void SendInputServerRpc(Vector2 input)
+    private void SendInputServerRpc(int tick, Vector2 input)
     {
         // On utilise une file pour les inputs pour les cas ou on en recoit plusieurs en meme temps.
-        m_InputQueue.Enqueue(input);
+        m_InputQueue.Enqueue(new PlayerInput
+        {
+            tick = tick,
+            direction = input
+        });
     }
 
 

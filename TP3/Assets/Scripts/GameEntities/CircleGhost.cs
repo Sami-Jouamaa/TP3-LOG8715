@@ -8,11 +8,15 @@ public class CircleGhost : NetworkBehaviour
 
     private Vector2 m_PredictedPosition;
 
+    private float m_Delay;
+
     public override void OnNetworkSpawn()
     {
-        if (!IsServer && m_MovingCircle != null)
+        if (!IsServer)
         {
             m_PredictedPosition = m_MovingCircle.Position;
+            var gameState = FindAnyObjectByType<GameState>();
+            m_Delay = gameState.CurrentRTT * 0.5f;
         }
     }
 
@@ -27,15 +31,16 @@ public class CircleGhost : NetworkBehaviour
         Vector2 serverPos = m_MovingCircle.Position;
         Vector2 velocity = m_MovingCircle.Velocity;
 
-        m_PredictedPosition += velocity * Time.fixedDeltaTime;
+        Vector2 predicted = serverPos + velocity * m_Delay;
 
-        float error = (serverPos - m_PredictedPosition).sqrMagnitude;
-
-        const float threshold = 0.5f;
-
-        if (error > threshold * threshold)
+        float error = (predicted - m_PredictedPosition).sqrMagnitude;
+        if (error > 0.25f)
         {
-            m_PredictedPosition = serverPos;
+            m_PredictedPosition = predicted;
+        }
+        else
+        {
+            m_PredictedPosition = Vector2.Lerp(m_PredictedPosition, predicted, 0.2f);
         }
 
         transform.position = m_PredictedPosition;
